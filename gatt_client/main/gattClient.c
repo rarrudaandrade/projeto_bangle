@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include "nvs.h"
 #include "nvs_flash.h"
+#include <ctype.h>
+#include <math.h>
 
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
@@ -31,8 +33,6 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "mqtt_client.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
 
 #define GATTC_TAG "GATTC_DEMO"
 #define REMOTE_SERVICE_UUID        0x00FF
@@ -41,7 +41,6 @@
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE   0
 #define JSON_PAYLOAD_SIZE 512 // ou até maior, dependendo do seu caso
-#define WIFI_CONNECTED_BIT BIT0
 
 typedef enum {
     READ_NONE = 0,
@@ -98,11 +97,11 @@ uint16_t rx_count = 0;
 //     .uuid = {.uuid128 = { 0xa6, 0xa3, 0x7d, 0x99, 0xf2, 0x6f, 0x1a, 0x8a, 0x0c, 0x4b, 0x0a, 0x7a, 0xb0, 0xcc, 0xe0, 0xeb }},
 // };
 
-static esp_mqtt_client_handle_t mqtt_client = NULL; // se ainda não global
+
 static const char remote_device_name[] = "Bangle.js 0f66";
+static esp_mqtt_client_handle_t mqtt_client = NULL;
 static bool connect    = false;
 static bool get_server = false;
-static bool mqtt_connected = false;
 static esp_gattc_char_elem_t *char_elem_result   = NULL;
 static esp_gattc_descr_elem_t *descr_elem_result = NULL;
 //extern esp_mqtt_client_handle_t mqtt_client;
@@ -171,59 +170,28 @@ static char g_steps[32];
 static char g_hr[32];
 static char g_accel[64];
 
-static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
-{
-    switch (event->event_id) {
-    case MQTT_EVENT_CONNECTED:
-        mqtt_connected = true;
-        ESP_LOGI(GATTC_TAG, "MQTT CONECTADO ao broker!");
-        // Quando conectar MQTT, só então envie o primeiro comando BLE:
-        // ⚠️ Só envie se a conexão BLE já estiver pronta (ex: handles já conhecidos)
-        if (gl_profile_tab[PROFILE_A_APP_ID].conn_id != 0 && gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle != 0) {
-            const char *message_temp = "print(E.getTemperature());\n";
-            esp_ble_gattc_write_char(
-                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_temp),
-                (uint8_t *)message_temp,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-        }
-        break;
-    case MQTT_EVENT_DISCONNECTED:
-        mqtt_connected = false;
-        ESP_LOGW(GATTC_TAG, "MQTT desconectado!");
-        break;
-    // outros eventos...
-    }
-    return ESP_OK;
+void mqtt_app_start(void) {
+    esp_mqtt_client_config_t mqtt_cfg = {
+    //.broker.address.uri = "mqtt://localhost:1883",
+    .broker.address.uri = "mqtt://192.168.27.101:1883",
+    //.broker.address.uri = "mqtt://127.0.0.1:1883",
+    };
+    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(mqtt_client);
 }
 
-void mqtt_app_start(void)
-{
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = "mqtt://192.168.27.101:1883", // coloque seu broker/esquema aqui
-    };
-
-    if (mqtt_client != NULL) {
-        esp_mqtt_client_stop(mqtt_client);
-        esp_mqtt_client_destroy(mqtt_client);
-        mqtt_client = NULL;
+float extract_first_float(const char *s) {
+    while (*s) {
+        if (isdigit((unsigned char)*s) || (*s == '-' && isdigit((unsigned char)*(s+1)))) {
+            char *end;
+            float val = strtof(s, &end);
+            if (s != end) return val;
+            s = end;
+        } else {
+            s++;
+        }
     }
-
-    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-
-    // Registra o handler de eventos MQTT para controlar a flag de "conectado"
-    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler_cb, NULL);
-
-    esp_err_t start_ret = esp_mqtt_client_start(mqtt_client);
-    if (start_ret == ESP_OK) {
-        ESP_LOGI("MQTT", "Cliente MQTT iniciado com sucesso.");
-    } else {
-        ESP_LOGE("MQTT", "Falha ao iniciar cliente MQTT! Código: %d", start_ret);
-    }
+    return NAN;
 }
 
 static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param)
@@ -448,48 +416,34 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         break;
     }
     //modelo receber informações
-    case ESP_GATTC_NOTIFY_EVT: {
-    // Copia resposta BLE
-        char msg[p_data->notify.value_len + 1];
+    //case ESP_GATTC_NOTIFY_EVT: {
+        /*char msg[p_data->notify.value_len + 1];
         memcpy(msg, p_data->notify.value, p_data->notify.value_len);
         msg[p_data->notify.value_len] = '\0';
 
-        // Filtra apenas números e ponto decimal (ex: "25.75")
-        float temperature = 0;
-        if (sscanf(msg, "%f", &temperature) == 1) {  // Se encontrou um número válido
-            ESP_LOGI(GATTC_TAG, "Mensagem recebida (filtrada): %.2f", temperature);
+        ESP_LOGI(GATTC_TAG, "Mensagem recebida: %s", msg);*/
 
-            // Formata o payload MQTT
-            char payload[50];
-            snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", temperature);
+        // Primeiro, processe de acordo com o estado atual
+        /*if (current_read_step == READ_TIME) {
+            printf("Timestamp Unix recebido: %s\n", msg);
+            strncpy(g_time, msg, sizeof(g_time));
+        } else if (current_read_step == READ_TEMP) {
+            printf("Temperatura recebida: %s\n", msg);
+            strncpy(g_temp, msg, sizeof(g_temp));
+        } else if (current_read_step == READ_STEPS) {
+            printf("Contador de passos recebido: %s\n", msg);
+            strncpy(g_steps, msg, sizeof(g_steps));
+        } else if (current_read_step == READ_HR) {
+            printf("Frequência cardíaca recebida: %s\n", msg);
+            strncpy(g_hr, msg, sizeof(g_hr));
+        } else if (current_read_step == READ_ACCEL) {
+            printf("Acelerômetro recebido (x,y,z): %s\n", msg);
+            strncpy(g_accel, msg, sizeof(g_accel));
+        }*/
 
-            // Publica no MQTT
-            esp_mqtt_client_publish(mqtt_client, "banglejs2/data", payload, 0, 1, 0);
-            //ESP_LOGI(GATTC_TAG, "pub temp: %s", payload);
-            ESP_LOGI("banglejs2/data", "%s", payload);
-        }else {
-            ESP_LOGI(GATTC_TAG, "Mensagem ignorada (não é temperatura): %s", msg);
-        }
-        vTaskDelay(5000 / portTICK_PERIOD_MS); // Debounce
-
-        // Envia o comando para solicitar a temperatura
-        const char *message_temp = "print(E.getTemperature());\n";
-        esp_ble_gattc_write_char(
-            gattc_if,
-            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-            gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-            strlen(message_temp),
-            (uint8_t *)message_temp,
-            ESP_GATT_WRITE_TYPE_RSP,
-            ESP_GATT_AUTH_REQ_NONE);
-    break;
-}
-
-    //modelo solicitar informações
-    case ESP_GATTC_WRITE_DESCR_EVT:
-        if (p_data->write.status == ESP_GATT_OK) {
-            ESP_LOGI(GATTC_TAG, "write descr success ");
-            // Enviar o primeiro comando de leitura da temperatura
+        // Depois, avance explicitamente o estado e envie o próximo comando
+        /*if (current_read_step == READ_TIME) {
+            current_read_step = READ_TEMP;
             const char *message_temp = "print(E.getTemperature());\n";
             esp_ble_gattc_write_char(
                 gattc_if,
@@ -500,11 +454,155 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                 ESP_GATT_WRITE_TYPE_RSP,
                 ESP_GATT_AUTH_REQ_NONE
             );
-        } else {
-            ESP_LOGE(GATTC_TAG, "write descr failed, error status = %x", p_data->write.status);
-        }
-    break;
+        } else if (current_read_step == READ_TEMP) {
+            current_read_step = READ_STEPS;
+            const char *message_steps = "print(Bangle.getHealthStatus().steps);\n";
+            esp_ble_gattc_write_char(
+                gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_steps),
+                (uint8_t *)message_steps,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+        } else if (current_read_step == READ_STEPS) {
+            current_read_step = READ_HR;
+            const char *message_hr = "print(Bangle.getHealthStatus().bpm);\n";
+            esp_ble_gattc_write_char(
+                gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_hr),
+                (uint8_t *)message_hr,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+        } else if (current_read_step == READ_HR) {
+            current_read_step = READ_ACCEL;
+            const char *message_accel = "print(Bangle.getAccel().x+','+Bangle.getAccel().y+','+Bangle.getAccel().z);\n";
+            esp_ble_gattc_write_char(
+                gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_accel),
+                (uint8_t *)message_accel,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+        } else if (current_read_step == READ_ACCEL) {
+            char json_payload[JSON_PAYLOAD_SIZE];
+            int written = snprintf(json_payload, sizeof(json_payload),
+                "{\"timestamp\":\"%s\",\"temperature\":\"%s\",\"steps\":\"%s\",\"heart_rate\":\"%s\",\"accel\":\"%s\"}",
+                g_time, g_temp, g_steps, g_hr, g_accel);
+            if (written < 0 || written >= JSON_PAYLOAD_SIZE) {
+                ESP_LOGE(GATTC_TAG, "JSON payload truncado!");
+                // Trate o erro conforme necessário
+            }
 
+            // Publica no tópico desejado "banglejs2/data"
+            int msg_id = esp_mqtt_client_publish(
+                mqtt_client,
+                "banglejs2/data",     // tópico onde o Node-RED irá escutar
+                json_payload,
+                0,    // tamanho = 0 para string null-terminated
+                1,    // QoS
+                0     // retain
+            );
+            ESP_LOGI(GATTC_TAG, "MQTT msg_id=%d publicado: %s", msg_id, json_payload);
+            // Fim do ciclo
+            current_read_step = READ_NONE;
+        }*/
+        /*printf("Temperatura recebida: %s\n", msg);
+            strncpy(g_temp, msg, sizeof(g_temp));
+            const char *message_temp = "print(E.getTemperature());\n";
+            esp_ble_gattc_write_char(
+                gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_temp),
+                (uint8_t *)message_temp,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+                 char json_payload[JSON_PAYLOAD_SIZE];
+            int written = snprintf(json_payload, sizeof(json_payload),
+                "{\"temperature\":\"%s\"}",
+                g_temp);
+            if (written < 0 || written >= JSON_PAYLOAD_SIZE) {
+                ESP_LOGE(GATTC_TAG, "JSON payload truncado!");
+                // Trate o erro conforme necessário
+            }
+
+            // Publica no tópico desejado "banglejs2/data"
+            int msg_id = esp_mqtt_client_publish(
+                mqtt_client,
+                "banglejs2/data",     // tópico onde o Node-RED irá escutar
+                json_payload,
+                0,    // tamanho = 0 para string null-terminated
+                1,    // QoS
+                0     // retain
+            );
+            ESP_LOGI(GATTC_TAG, "MQTT msg_id=%d publicado: %s", msg_id, json_payload);
+        break;*/
+        
+    //}
+
+    case ESP_GATTC_NOTIFY_EVT: {
+        // Copiar valor recebido em msg, adicionar '\0' para string
+        char msg[p_data->notify.value_len + 1];
+        memcpy(msg, p_data->notify.value, p_data->notify.value_len);
+        msg[p_data->notify.value_len] = '\0';
+
+        // Filtra apenas números e ponto decimal (ex: "25.75")
+        float temperature = extract_first_float(msg);
+        if (!isnan(temperature)) {
+            // Monta e publica no MQTT
+            char payload[50];
+            snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", temperature);
+            esp_mqtt_client_publish(mqtt_client, "banglejs2/data", payload, 0, 1, 0);
+            ESP_LOGI("banglejs2/data", "%s", payload);
+        } else {
+            ESP_LOGI(GATTC_TAG, "Mensagem ignorada (sem valor numérico): %s", msg);
+        }
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS); // Debounce
+
+        // Envia o comando para solicitar a temperatura
+        const char *message_temp = "print(E.getTemperature());\n";
+        esp_ble_gattc_write_char
+        (
+            gattc_if,
+            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+            gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+            strlen(message_temp),
+            (uint8_t *)message_temp,
+            ESP_GATT_WRITE_TYPE_RSP,
+            ESP_GATT_AUTH_REQ_NONE
+        );
+            break;
+    }
+
+    //modelo solicitar informações
+    case ESP_GATTC_WRITE_DESCR_EVT:
+        if (p_data->write.status != ESP_GATT_OK) {
+            ESP_LOGE(GATTC_TAG, "write descr failed, error status = %x", p_data->write.status);
+            break;
+        }
+
+        ESP_LOGI(GATTC_TAG, "write descr success ");
+        // Enviar primeiro comando de tempo
+        const char *message_time = "print(getTime());\n";
+        esp_ble_gattc_write_char(gattc_if,
+            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+            gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+            strlen(message_time),
+            (uint8_t *)message_time,
+            ESP_GATT_WRITE_TYPE_RSP,
+            ESP_GATT_AUTH_REQ_NONE);
+
+        current_read_step = READ_TIME;
+        break;
 
     case ESP_GATTC_SRVC_CHG_EVT: {
         esp_bd_addr_t bda;
@@ -663,7 +761,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
 // ... Seus includes de BLE e demais features
 // Ex: #include "mqtt_client.h" etc.
 
-#define EXAMPLE_WIFI_SSID "FRANCISCA-5.8"
+#define EXAMPLE_WIFI_SSID "FRANCISCA"
 #define EXAMPLE_WIFI_PASS "00254180"
 
 static const char *TAG = "MAIN";
@@ -674,22 +772,18 @@ const int WIFI_CONNECTED_BIT = BIT0;
 extern void mqtt_app_start(void);  // Já existe no seu código!
 
 // Handle de evento Wi-Fi/IP
-static EventGroupHandle_t wifi_event_group;
-// Declare o handle global mqtt_client caso ainda não tenha:
-// static esp_mqtt_client_handle_t mqtt_client = NULL;
-
-static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                              int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
-        ESP_LOGW("WIFI", "Desconectado do Wi-Fi, tentando reconectar...");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
-        ESP_LOGI("WIFI", "Wi-Fi conectado, IP obtido.");
-        mqtt_app_start();  // Só aqui deve iniciar o MQTT!
+        ESP_LOGI(TAG, "WiFi conectado, IP obtido.");
+        mqtt_app_start();  // Só aqui inicia MQTT!
     }
 }
 
