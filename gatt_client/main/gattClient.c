@@ -1,20 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
- */
-
-
-
-/****************************************************************************
-*
-* This demo showcases BLE GATT client. It can scan BLE devices and connect to one device.
-* Run the gatt_server demo, the client demo will automatically connect to the gatt_server demo.
-* Client demo will enable gatt_server's notify after connection. The two devices will then exchange
-* data.
-*
-****************************************************************************/
-
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
@@ -41,18 +24,6 @@
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE   0
 #define JSON_PAYLOAD_SIZE 512 // ou até maior, dependendo do seu caso
-
-typedef enum {
-    READ_NONE = 0,
-    READ_TIME,
-    READ_TEMP,
-    READ_STEPS,
-    READ_HR,
-    READ_ACCEL
-} read_step_t;
-
-
-static read_step_t current_read_step = READ_NONE;
 
 //static uint8_t gatts_xxx_uuid128[ESP_UUID_LEN_128] = {0x06, 0x18, 0x7a, 0xec, 0xbe, 0x11, 0x11, 0xea, 0x00, 0x16, 0x02, 0x42, 0x01, 0x13, 0x00, 0x04};
 //eb, e0, cc , b0, 7a0a, 4b0c, 8a1a, 6ff2997da3a6
@@ -89,14 +60,10 @@ const char *data = "LED1.set();\n";
 //esp_gattc_char_elem_t rx_char_elem_result[256];
 uint16_t rx_count = 0;
 
-
-
-
 // static esp_bt_uuid_t service_uuid = {
 //     .len = ESP_UUID_LEN_128,
 //     .uuid = {.uuid128 = { 0xa6, 0xa3, 0x7d, 0x99, 0xf2, 0x6f, 0x1a, 0x8a, 0x0c, 0x4b, 0x0a, 0x7a, 0xb0, 0xcc, 0xe0, 0xeb }},
 // };
-
 
 static const char remote_device_name[] = "Bangle.js 0f66";
 static esp_mqtt_client_handle_t mqtt_client = NULL;
@@ -170,6 +137,57 @@ static char g_steps[32];
 static char g_hr[32];
 static char g_accel[64];
 
+void vTaskSolicitaDados(void *pvParameters)
+{
+    while (1)
+    {
+        if (connect && gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle != INVALID_HANDLE)
+        {
+            // 1. Timestamp
+            const char *message_time = "print(getTime());\n";
+            esp_err_t ret = esp_ble_gattc_write_char(
+                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_time),
+                (uint8_t *)message_time,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+
+            vTaskDelay(100 / portTICK_PERIOD_MS); // Espaço entre comandos
+
+            // 2. Temperatura
+            const char *message_temp = "print(E.getTemperature());\n";
+            ret = esp_ble_gattc_write_char(
+                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_temp),
+                (uint8_t *)message_temp,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            // 3. Frequência cardíaca (BPM)
+            const char *message_hr = "print(Bangle.getHealthStatus().bpm);\n";
+            ret = esp_ble_gattc_write_char(
+                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_hr),
+                (uint8_t *)message_hr,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+        }
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS); // intervalo entre ciclos
+    }
+}
+
 void mqtt_app_start(void) {
     esp_mqtt_client_config_t mqtt_cfg = {
     //.broker.address.uri = "mqtt://localhost:1883",
@@ -183,10 +201,10 @@ void mqtt_app_start(void) {
 float extract_first_float(const char *s) {
     while (*s) {
         if (isdigit((unsigned char)*s) || (*s == '-' && isdigit((unsigned char)*(s+1)))) {
-            char *end;
-            float val = strtof(s, &end);
-            if (s != end) return val;
-            s = end;
+            char *endptr;
+            float val = strtof(s, &endptr);
+            if (s != endptr) return val;
+            s = endptr;
         } else {
             s++;
         }
@@ -348,239 +366,156 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
         ESP_LOGI(GATTC_TAG, "ESP_GATTC_REG_FOR_NOTIFY_EVT");
-        if (p_data->reg_for_notify.status != ESP_GATT_OK){
-            ESP_LOGE(GATTC_TAG, "REG FOR NOTIFY failed: error status = %d", p_data->reg_for_notify.status);
-        }else{
-            uint16_t count = 0;
-            uint16_t notify_en = 1;
-            esp_gatt_status_t ret_status = esp_ble_gattc_get_attr_count( gattc_if,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                                                                         ESP_GATT_DB_DESCRIPTOR,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].service_end_handle,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].rx_char_handle,
-                                                                         &count);
-            ESP_LOGI(GATTC_TAG, "Procurando descritor em TX handle: 0x%04x", gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle);
-            if (ret_status != ESP_GATT_OK){
-                ESP_LOGE(GATTC_TAG, "esp_ble_gattc_get_attr_count error");
+
+        if (p_data->reg_for_notify.status != ESP_GATT_OK) {
+            ESP_LOGE(GATTC_TAG, "REG FOR NOTIFY falhou: status = %d", p_data->reg_for_notify.status);
+            break;
+        }
+
+        uint16_t count = 0;
+        esp_gatt_status_t ret_status = esp_ble_gattc_get_attr_count(
+            gattc_if,
+            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+            ESP_GATT_DB_DESCRIPTOR,
+            gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
+            gl_profile_tab[PROFILE_A_APP_ID].service_end_handle,
+            gl_profile_tab[PROFILE_A_APP_ID].rx_char_handle,
+            &count
+        );
+
+        if (ret_status != ESP_GATT_OK) {
+            ESP_LOGE(GATTC_TAG, "Erro ao obter contagem de descritores");
+            break;
+        }
+
+        if (count > 0) {
+            esp_gattc_descr_elem_t *descr_elem_result = malloc(sizeof(esp_gattc_descr_elem_t) * count);
+            if (!descr_elem_result) {
+                ESP_LOGE(GATTC_TAG, "Erro malloc para descritores");
                 break;
             }
 
-            if (count > 0){
-                descr_elem_result = malloc(sizeof(esp_gattc_descr_elem_t) * count);
-                esp_log_buffer_hex(GATTC_TAG, descr_elem_result, count);
-                // esp_log_buffer_hex(GATTC_TAG, &notify_descr_uuid[0], count);
-                if (!descr_elem_result){
-                    ESP_LOGE(GATTC_TAG, "malloc error, gattc no mem");
-                    break;
-                }else{
-                    ret_status = esp_ble_gattc_get_descr_by_char_handle( gattc_if,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                                                                         gl_profile_tab[PROFILE_A_APP_ID].rx_char_handle,
-                                                                         notify_descr_uuid,
-                                                                         descr_elem_result,
-                                                                         &count);
-                    if (ret_status != ESP_GATT_OK){
-                        ESP_LOGE(GATTC_TAG, "esp_ble_gattc_get_descr_by_char_handle error");
-                        free(descr_elem_result);
-                        descr_elem_result = NULL;
-                        break;
-                    }
-                    /* Every char has only one descriptor in our 'ESP_GATTS_DEMO' demo, so we used first 'descr_elem_result' */
-                    if (count > 0  ){
-                        ret_status = esp_ble_gattc_write_char_descr( gattc_if,
-                                                                     gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                                                                     descr_elem_result[0].handle,
-                                                                     sizeof(notify_en),
-                                                                     (uint8_t *)&notify_en,
-                                                                     ESP_GATT_WRITE_TYPE_RSP,
-                                                                     ESP_GATT_AUTH_REQ_NONE);
-                    }
-                    else{
-                        ESP_LOGI(GATTC_TAG,"aqui");
-                    }
+            ret_status = esp_ble_gattc_get_descr_by_char_handle(
+                gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].rx_char_handle,
+                notify_descr_uuid,
+                descr_elem_result,
+                &count
+            );
 
-                    if (ret_status != ESP_GATT_OK){
-                        ESP_LOGE(GATTC_TAG, "esp_ble_gattc_write_char_descr error");
-                    }
+            if (ret_status != ESP_GATT_OK) {
+                ESP_LOGE(GATTC_TAG, "Erro ao obter descritor por handle");
+                free(descr_elem_result);
+                break;
+            }
 
-                    /* free descr_elem_result */
+            if (count > 0) {
+                uint16_t notify_en = 1;
+
+                ret_status = esp_ble_gattc_write_char_descr(
+                    gattc_if,
+                    gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                    descr_elem_result[0].handle,
+                    sizeof(notify_en),
+                    (uint8_t *)&notify_en,
+                    ESP_GATT_WRITE_TYPE_RSP,
+                    ESP_GATT_AUTH_REQ_NONE
+                );
+
+                if (ret_status != ESP_GATT_OK) {
+                    ESP_LOGE(GATTC_TAG, "Erro ao habilitar notificações");
                     free(descr_elem_result);
+                    break;
                 }
-            }
-            else{
-                ESP_LOGE(GATTC_TAG, "decsr not found");
+
+                ESP_LOGI(GATTC_TAG, "Notificações habilitadas no handle: 0x%04x", gl_profile_tab[PROFILE_A_APP_ID].rx_char_handle);
+
+                // Enviar comando para ativar sensor de frequência cardíaca no Bangle.js
+                const char *cmd_activate_hrm = "Bangle.setHRMPower(1);\n";
+                esp_err_t ret = esp_ble_gattc_write_char(
+                    gattc_if,
+                    gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                    gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                    strlen(cmd_activate_hrm),
+                    (uint8_t *)cmd_activate_hrm,
+                    ESP_GATT_WRITE_TYPE_RSP,
+                    ESP_GATT_AUTH_REQ_NONE
+                );
+                if (ret == ESP_OK) {
+                    ESP_LOGI(GATTC_TAG, "Comando para ativar HRM enviado.");
+                } else {
+                    ESP_LOGE(GATTC_TAG, "Falha ao enviar comando para ativar HRM: %d", ret);
+                }
+
+                // Criar a task que enviará os comandos periódicos para os sensores (timestamp, temperatura e HRM)
+                BaseType_t result = xTaskCreate(
+                    vTaskSolicitaDados,
+                    "SolicitaDados",
+                    4096,
+                    NULL,
+                    5,
+                    NULL
+                );
+
+                if (result != pdPASS) {
+                    ESP_LOGE(GATTC_TAG, "Falha ao criar task vTaskSolicitaDados");
+                } else {
+                    ESP_LOGI(GATTC_TAG, "Task vTaskSolicitaDados iniciada");
+                }
+
+            } else {
+                ESP_LOGE(GATTC_TAG, "Nenhum descritor CCC encontrado para RX characteristic");
             }
 
+            free(descr_elem_result);
+        } else {
+            ESP_LOGE(GATTC_TAG, "Nenhum descritor encontrado para RX characteristic");
         }
+
         break;
     }
-    //modelo receber informações
-    //case ESP_GATTC_NOTIFY_EVT: {
-        /*char msg[p_data->notify.value_len + 1];
-        memcpy(msg, p_data->notify.value, p_data->notify.value_len);
-        msg[p_data->notify.value_len] = '\0';
 
-        ESP_LOGI(GATTC_TAG, "Mensagem recebida: %s", msg);*/
-
-        // Primeiro, processe de acordo com o estado atual
-        /*if (current_read_step == READ_TIME) {
-            printf("Timestamp Unix recebido: %s\n", msg);
-            strncpy(g_time, msg, sizeof(g_time));
-        } else if (current_read_step == READ_TEMP) {
-            printf("Temperatura recebida: %s\n", msg);
-            strncpy(g_temp, msg, sizeof(g_temp));
-        } else if (current_read_step == READ_STEPS) {
-            printf("Contador de passos recebido: %s\n", msg);
-            strncpy(g_steps, msg, sizeof(g_steps));
-        } else if (current_read_step == READ_HR) {
-            printf("Frequência cardíaca recebida: %s\n", msg);
-            strncpy(g_hr, msg, sizeof(g_hr));
-        } else if (current_read_step == READ_ACCEL) {
-            printf("Acelerômetro recebido (x,y,z): %s\n", msg);
-            strncpy(g_accel, msg, sizeof(g_accel));
-        }*/
-
-        // Depois, avance explicitamente o estado e envie o próximo comando
-        /*if (current_read_step == READ_TIME) {
-            current_read_step = READ_TEMP;
-            const char *message_temp = "print(E.getTemperature());\n";
-            esp_ble_gattc_write_char(
-                gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_temp),
-                (uint8_t *)message_temp,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-        } else if (current_read_step == READ_TEMP) {
-            current_read_step = READ_STEPS;
-            const char *message_steps = "print(Bangle.getHealthStatus().steps);\n";
-            esp_ble_gattc_write_char(
-                gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_steps),
-                (uint8_t *)message_steps,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-        } else if (current_read_step == READ_STEPS) {
-            current_read_step = READ_HR;
-            const char *message_hr = "print(Bangle.getHealthStatus().bpm);\n";
-            esp_ble_gattc_write_char(
-                gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_hr),
-                (uint8_t *)message_hr,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-        } else if (current_read_step == READ_HR) {
-            current_read_step = READ_ACCEL;
-            const char *message_accel = "print(Bangle.getAccel().x+','+Bangle.getAccel().y+','+Bangle.getAccel().z);\n";
-            esp_ble_gattc_write_char(
-                gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_accel),
-                (uint8_t *)message_accel,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-        } else if (current_read_step == READ_ACCEL) {
-            char json_payload[JSON_PAYLOAD_SIZE];
-            int written = snprintf(json_payload, sizeof(json_payload),
-                "{\"timestamp\":\"%s\",\"temperature\":\"%s\",\"steps\":\"%s\",\"heart_rate\":\"%s\",\"accel\":\"%s\"}",
-                g_time, g_temp, g_steps, g_hr, g_accel);
-            if (written < 0 || written >= JSON_PAYLOAD_SIZE) {
-                ESP_LOGE(GATTC_TAG, "JSON payload truncado!");
-                // Trate o erro conforme necessário
-            }
-
-            // Publica no tópico desejado "banglejs2/data"
-            int msg_id = esp_mqtt_client_publish(
-                mqtt_client,
-                "banglejs2/data",     // tópico onde o Node-RED irá escutar
-                json_payload,
-                0,    // tamanho = 0 para string null-terminated
-                1,    // QoS
-                0     // retain
-            );
-            ESP_LOGI(GATTC_TAG, "MQTT msg_id=%d publicado: %s", msg_id, json_payload);
-            // Fim do ciclo
-            current_read_step = READ_NONE;
-        }*/
-        /*printf("Temperatura recebida: %s\n", msg);
-            strncpy(g_temp, msg, sizeof(g_temp));
-            const char *message_temp = "print(E.getTemperature());\n";
-            esp_ble_gattc_write_char(
-                gattc_if,
-                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-                strlen(message_temp),
-                (uint8_t *)message_temp,
-                ESP_GATT_WRITE_TYPE_RSP,
-                ESP_GATT_AUTH_REQ_NONE
-            );
-                 char json_payload[JSON_PAYLOAD_SIZE];
-            int written = snprintf(json_payload, sizeof(json_payload),
-                "{\"temperature\":\"%s\"}",
-                g_temp);
-            if (written < 0 || written >= JSON_PAYLOAD_SIZE) {
-                ESP_LOGE(GATTC_TAG, "JSON payload truncado!");
-                // Trate o erro conforme necessário
-            }
-
-            // Publica no tópico desejado "banglejs2/data"
-            int msg_id = esp_mqtt_client_publish(
-                mqtt_client,
-                "banglejs2/data",     // tópico onde o Node-RED irá escutar
-                json_payload,
-                0,    // tamanho = 0 para string null-terminated
-                1,    // QoS
-                0     // retain
-            );
-            ESP_LOGI(GATTC_TAG, "MQTT msg_id=%d publicado: %s", msg_id, json_payload);
-        break;*/
-        
-    //}
 
     case ESP_GATTC_NOTIFY_EVT: {
-        // Copiar valor recebido em msg, adicionar '\0' para string
-        char msg[p_data->notify.value_len + 1];
-        memcpy(msg, p_data->notify.value, p_data->notify.value_len);
-        msg[p_data->notify.value_len] = '\0';
+        char raw_msg[p_data->notify.value_len + 1];
+        memcpy(raw_msg, p_data->notify.value, p_data->notify.value_len);
+        raw_msg[p_data->notify.value_len] = '\0';
 
-        // Filtra apenas números e ponto decimal (ex: "25.75")
-        float temperature = extract_first_float(msg);
-        if (!isnan(temperature)) {
-            // Monta e publica no MQTT
-            char payload[50];
-            snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", temperature);
-            esp_mqtt_client_publish(mqtt_client, "banglejs2/data", payload, 0, 1, 0);
-            ESP_LOGI("banglejs2/data", "%s", payload);
-        } else {
-            ESP_LOGI(GATTC_TAG, "Mensagem ignorada (sem valor numérico): %s", msg);
+        ESP_LOGI(GATTC_TAG, "Received notification: %s", raw_msg);
+
+        char *line = strtok(raw_msg, "\n");
+        while (line != NULL) {
+            float val = extract_first_float(line);
+
+            if (!isnan(val)) {
+                if (val > 100000) { // timestamp UNIX
+                    char payload[64];
+                    snprintf(payload, sizeof(payload), "{\"timestamp\":%.0f}", val);
+                    esp_mqtt_client_publish(mqtt_client, "banglejs2/time", payload, 0, 1, 0);
+                    ESP_LOGI("banglejs2/time", "%s", payload);
+
+                } else if (val >= 10 && val < 50) { // Temperatura em ºC
+                    char payload[64];
+                    snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", val);
+                    esp_mqtt_client_publish(mqtt_client, "banglejs2/data", payload, 0, 1, 0);
+                    ESP_LOGI("banglejs2/data", "%s", payload);
+
+                } else if (val >= 50 && val <= 220) { // Batimentos cardíacos BPM
+                    char payload[64];
+                    snprintf(payload, sizeof(payload), "{\"bpm\":%.0f}", val);
+                    esp_mqtt_client_publish(mqtt_client, "banglejs2/hr", payload, 0, 1, 0);
+                    ESP_LOGI("banglejs2/hr", "%s", payload);
+
+                } else {
+                    ESP_LOGI(GATTC_TAG, "Linha ignorada (valor fora dos limites): %s", line);
+                }
+            } else {
+                ESP_LOGI(GATTC_TAG, "Linha ignorada (sem float): %s", line);
+            }
+            line = strtok(NULL, "\n");
         }
-
-        vTaskDelay(5000 / portTICK_PERIOD_MS); // Debounce
-
-        // Envia o comando para solicitar a temperatura
-        const char *message_temp = "print(E.getTemperature());\n";
-        esp_ble_gattc_write_char
-        (
-            gattc_if,
-            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
-            gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
-            strlen(message_temp),
-            (uint8_t *)message_temp,
-            ESP_GATT_WRITE_TYPE_RSP,
-            ESP_GATT_AUTH_REQ_NONE
-        );
-            break;
+        break;
     }
 
     //modelo solicitar informações
@@ -601,7 +536,6 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
             ESP_GATT_WRITE_TYPE_RSP,
             ESP_GATT_AUTH_REQ_NONE);
 
-        current_read_step = READ_TIME;
         break;
 
     case ESP_GATTC_SRVC_CHG_EVT: {
@@ -887,78 +821,3 @@ void app_main(void)
 
     // 3) BLE segue funcionando, MQTT só conecta quando Wi-Fi ok!
 }
-/*
-void app_main(void)
-{
-    // Initialize NVS.
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
-
-    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ret = esp_bt_controller_init(&bt_cfg);
-    if (ret) {
-        ESP_LOGE(GATTC_TAG, "%s initialize controller failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret) {
-        ESP_LOGE(GATTC_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-
-    ret = esp_bluedroid_init();
-    if (ret) {
-        ESP_LOGE(GATTC_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-
-    ret = esp_bluedroid_enable();
-    if (ret) {
-        ESP_LOGE(GATTC_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-
-    //register the  callback function to the gap module
-    ret = esp_ble_gap_register_callback(esp_gap_cb);
-    if (ret){
-        ESP_LOGE(GATTC_TAG, "%s gap register failed, error code = %x", __func__, ret);
-        return;
-    }
-
-    //register the callback function to the gattc module
-    ret = esp_ble_gattc_register_callback(esp_gattc_cb);
-    if(ret){
-        ESP_LOGE(GATTC_TAG, "%s gattc register failed, error code = %x", __func__, ret);
-        return;
-    }
-
-    ret = esp_ble_gattc_app_register(PROFILE_A_APP_ID);
-    if (ret){
-        ESP_LOGE(GATTC_TAG, "%s gattc app register failed, error code = %x", __func__, ret);
-    }
-    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
-    if (local_mtu_ret){
-        ESP_LOGE(GATTC_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
-
-    mqtt_app_start();
-
-}
-    */
-
-// esp_ble_gattc_write_char(
-//     gattc_if,
-//     conn_id,
-//     char_elem_result[0].char_handle,
-//     strlen(data),
-//     (uint8_t *)data,
-//     ESP_GATT_WRITE_TYPE_RSP,
-//     ESP_GATT_AUTH_REQ_NONE
-// );
