@@ -1,0 +1,389 @@
+[
+    {
+        "id": "9192e14d5b455948",
+        "type": "tab",
+        "label": "Fluxo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "433043907368d7e7",
+        "type": "mqtt in",
+        "z": "9192e14d5b455948",
+        "name": "Info Temperatura",
+        "topic": "banglejs2/data",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 320,
+        "y": 120,
+        "wires": [
+            [
+                "cca96fcb4a041f57"
+            ]
+        ]
+    },
+    {
+        "id": "cca96fcb4a041f57",
+        "type": "function",
+        "z": "9192e14d5b455948",
+        "name": "Extrai Temperatura",
+        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') {\n    jsonData = JSON.parse(jsonData);\n}\nmsg.payload = jsonData.temperature;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 120,
+        "wires": [
+            [
+                "74bacfe6ef41fea5",
+                "8b07e54c91970ac2"
+            ]
+        ]
+    },
+    {
+        "id": "74bacfe6ef41fea5",
+        "type": "ui_gauge",
+        "z": "9192e14d5b455948",
+        "name": "",
+        "group": "60c8a2a1bc6d7bf2",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temperatura",
+        "label": "ºC",
+        "format": "{{value}}",
+        "min": 10,
+        "max": "50",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 800,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "8b07e54c91970ac2",
+        "type": "ui_chart",
+        "z": "9192e14d5b455948",
+        "name": "",
+        "group": "60c8a2a1bc6d7bf2",
+        "order": 2,
+        "width": 14,
+        "height": 4,
+        "label": "Gráfico Temperatura",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": 10,
+        "ymax": 50,
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "79a22870c37496ef",
+        "type": "mqtt in",
+        "z": "9192e14d5b455948",
+        "name": "Info Data/Hora",
+        "topic": "banglejs2/time",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 320,
+        "y": 260,
+        "wires": [
+            [
+                "3ed10df00d917a3e"
+            ]
+        ]
+    },
+    {
+        "id": "3ed10df00d917a3e",
+        "type": "function",
+        "z": "9192e14d5b455948",
+        "name": "Extrai Timestamp",
+        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.timestamp;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 260,
+        "wires": [
+            [
+                "94da99bfe3867bc8",
+                "4247d81edbe2969c"
+            ]
+        ]
+    },
+    {
+        "id": "94da99bfe3867bc8",
+        "type": "ui_gauge",
+        "z": "9192e14d5b455948",
+        "name": "",
+        "group": "60c8a2a1bc6d7bf2",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Timestamp (s)",
+        "label": "segundos",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "2000000000",
+        "colors": [
+            "#1f77b4",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 800,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "4247d81edbe2969c",
+        "type": "ui_text",
+        "z": "9192e14d5b455948",
+        "group": "60c8a2a1bc6d7bf2",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Data/Hora",
+        "format": "{{new Date(payload * 1000).toLocaleString()}}",
+        "layout": "row-spread",
+        "x": 800,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "103a3cc8d64def61",
+        "type": "mqtt in",
+        "z": "9192e14d5b455948",
+        "name": "Info Frequência Cardíaca",
+        "topic": "banglejs2/hr",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 320,
+        "y": 400,
+        "wires": [
+            [
+                "38548652ab672bd7"
+            ]
+        ]
+    },
+    {
+        "id": "38548652ab672bd7",
+        "type": "function",
+        "z": "9192e14d5b455948",
+        "name": "Extrai BPM",
+        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.bpm;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 400,
+        "wires": [
+            [
+                "d1d2cc82f48702ae",
+                "378a7b9ccd23ce59",
+                "8b15e622d125f1c4"
+            ]
+        ]
+    },
+    {
+        "id": "d1d2cc82f48702ae",
+        "type": "ui_gauge",
+        "z": "9192e14d5b455948",
+        "name": "",
+        "group": "56252c1c7e922430",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Frequência Cardíaca",
+        "label": "BPM",
+        "format": "{{value}}",
+        "min": 50,
+        "max": "220",
+        "colors": [
+            "#1f77b4",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 800,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "378a7b9ccd23ce59",
+        "type": "ui_text",
+        "z": "9192e14d5b455948",
+        "group": "56252c1c7e922430",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Batimentos/min",
+        "format": "{{payload}} BPM",
+        "layout": "row-spread",
+        "x": 820,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "8b15e622d125f1c4",
+        "type": "ui_chart",
+        "z": "9192e14d5b455948",
+        "name": "",
+        "group": "56252c1c7e922430",
+        "order": 3,
+        "width": 14,
+        "height": 4,
+        "label": "Gráfico Frequência Cardíaca",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": 40,
+        "ymax": 220,
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#d62728",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 820,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Local MQTT",
+        "broker": "192.168.27.101",
+        "port": "1883",
+        "clientid": "nodered_bangle",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "60c8a2a1bc6d7bf2",
+        "type": "ui_group",
+        "name": "Sensor Temperatura",
+        "tab": "1be86dd588ff48e2",
+        "order": 2,
+        "disp": true,
+        "width": 14,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "56252c1c7e922430",
+        "type": "ui_group",
+        "name": "Sensor Umidade",
+        "tab": "1be86dd588ff48e2",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "1be86dd588ff48e2",
+        "type": "ui_tab",
+        "name": "Wireless Communication Protocols for IoT Applications",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    }
+]
