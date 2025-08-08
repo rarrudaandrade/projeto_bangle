@@ -144,8 +144,8 @@ void vTaskSolicitaDados(void *pvParameters)
         if (connect && gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle != INVALID_HANDLE)
         {
             // 1. Timestamp
-            const char *message_time = "print(getTime());\n";
-            esp_err_t ret = esp_ble_gattc_write_char(
+            const char *message_time = "print('TIME:'+getTime());\n";
+            esp_ble_gattc_write_char(
                 gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
                 gl_profile_tab[PROFILE_A_APP_ID].conn_id,
                 gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
@@ -154,12 +154,11 @@ void vTaskSolicitaDados(void *pvParameters)
                 ESP_GATT_WRITE_TYPE_RSP,
                 ESP_GATT_AUTH_REQ_NONE
             );
-
-            vTaskDelay(100 / portTICK_PERIOD_MS); // Espaço entre comandos
+            vTaskDelay(100 / portTICK_PERIOD_MS);
 
             // 2. Temperatura
-            const char *message_temp = "print(E.getTemperature());\n";
-            ret = esp_ble_gattc_write_char(
+            const char *message_temp = "print('TEMP:'+E.getTemperature());\n";
+            esp_ble_gattc_write_char(
                 gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
                 gl_profile_tab[PROFILE_A_APP_ID].conn_id,
                 gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
@@ -168,12 +167,11 @@ void vTaskSolicitaDados(void *pvParameters)
                 ESP_GATT_WRITE_TYPE_RSP,
                 ESP_GATT_AUTH_REQ_NONE
             );
-
             vTaskDelay(100 / portTICK_PERIOD_MS);
 
-            // 3. Frequência cardíaca (BPM)
-            const char *message_hr = "print(Bangle.getHealthStatus().bpm);\n";
-            ret = esp_ble_gattc_write_char(
+            // 3. Batimentos cardíacos (BPM)
+            const char *message_hr = "print('BPM:'+Bangle.getHealthStatus().bpm);\n";
+            esp_ble_gattc_write_char(
                 gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
                 gl_profile_tab[PROFILE_A_APP_ID].conn_id,
                 gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
@@ -182,9 +180,36 @@ void vTaskSolicitaDados(void *pvParameters)
                 ESP_GATT_WRITE_TYPE_RSP,
                 ESP_GATT_AUTH_REQ_NONE
             );
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            // 4. Passos
+            const char *message_steps = "print('STEPS:'+Bangle.getHealthStatus().steps);\n";
+            esp_ble_gattc_write_char(
+                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_steps),
+                (uint8_t *)message_steps,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            // 5. Acelerômetro (x,y,z)
+            const char *message_accel = "var a=Bangle.getAccel();print('ACCEL:'+a.x+','+a.y+','+a.z);\n";
+            esp_ble_gattc_write_char(
+                gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].tx_char_handle,
+                strlen(message_accel),
+                (uint8_t *)message_accel,
+                ESP_GATT_WRITE_TYPE_RSP,
+                ESP_GATT_AUTH_REQ_NONE
+            );
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
 
-        vTaskDelay(5000 / portTICK_PERIOD_MS); // intervalo entre ciclos
+        vTaskDelay(3000 / portTICK_PERIOD_MS); // intervalo entre ciclos
     }
 }
 
@@ -478,41 +503,67 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
 
 
     case ESP_GATTC_NOTIFY_EVT: {
-        char raw_msg[p_data->notify.value_len + 1];
-        memcpy(raw_msg, p_data->notify.value, p_data->notify.value_len);
-        raw_msg[p_data->notify.value_len] = '\0';
+    char raw_msg[p_data->notify.value_len + 1];
+    memcpy(raw_msg, p_data->notify.value, p_data->notify.value_len);
+    raw_msg[p_data->notify.value_len] = '\0';
+    ESP_LOGI(GATTC_TAG, "Received notification: %s", raw_msg);
 
-        ESP_LOGI(GATTC_TAG, "Received notification: %s", raw_msg);
-
-        char *line = strtok(raw_msg, "\n");
+    char *line = strtok(raw_msg, "\n");
         while (line != NULL) {
-            float val = extract_first_float(line);
 
-            if (!isnan(val)) {
-                if (val > 100000) { // timestamp UNIX
+            if (strncmp(line, "TIME:", 5) == 0) {
+                float ts = extract_first_float(line + 5);
+                if (!isnan(ts)) {
                     char payload[64];
-                    snprintf(payload, sizeof(payload), "{\"timestamp\":%.0f}", val);
+                    snprintf(payload, sizeof(payload), "{\"timestamp\":%.0f}", ts);
                     esp_mqtt_client_publish(mqtt_client, "banglejs2/time", payload, 0, 1, 0);
                     ESP_LOGI("banglejs2/time", "%s", payload);
-
-                } else if (val >= 10 && val < 50) { // Temperatura em ºC
+                }
+            }
+            else if (strncmp(line, "TEMP:", 5) == 0) {
+                float temp = extract_first_float(line + 5);
+                if (!isnan(temp)) {
                     char payload[64];
-                    snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", val);
+                    snprintf(payload, sizeof(payload), "{\"temperature\":%.2f}", temp);
                     esp_mqtt_client_publish(mqtt_client, "banglejs2/data", payload, 0, 1, 0);
                     ESP_LOGI("banglejs2/data", "%s", payload);
-
-                } else if (val >= 50 && val <= 220) { // Batimentos cardíacos BPM
+                }
+            }
+            else if (strncmp(line, "BPM:", 4) == 0) {
+                float bpm = extract_first_float(line + 4);
+                if (!isnan(bpm)) {
                     char payload[64];
-                    snprintf(payload, sizeof(payload), "{\"bpm\":%.0f}", val);
+                    snprintf(payload, sizeof(payload), "{\"bpm\":%.0f}", bpm);
                     esp_mqtt_client_publish(mqtt_client, "banglejs2/hr", payload, 0, 1, 0);
                     ESP_LOGI("banglejs2/hr", "%s", payload);
-
-                } else {
-                    ESP_LOGI(GATTC_TAG, "Linha ignorada (valor fora dos limites): %s", line);
                 }
-            } else {
-                ESP_LOGI(GATTC_TAG, "Linha ignorada (sem float): %s", line);
             }
+            else if (strncmp(line, "STEPS:", 6) == 0) {
+                float steps = extract_first_float(line + 6);
+                if (!isnan(steps)) {
+                    char payload[64];
+                    snprintf(payload, sizeof(payload), "{\"steps\":%.0f}", steps);
+                    esp_mqtt_client_publish(mqtt_client, "banglejs2/steps", payload, 0, 1, 0);
+                    ESP_LOGI("banglejs2/steps", "%s", payload);
+                }
+            }
+            else if (strncmp(line, "ACCEL:", 6) == 0) {
+                // Extrai os três valores separados por vírgula
+                char *accel_str = line + 6; // após 'ACCEL:'
+                float x = 0, y = 0, z = 0;
+                if (sscanf(accel_str, "%f,%f,%f", &x, &y, &z) == 3) {
+                    char payload[128];
+                    snprintf(payload, sizeof(payload), "{\"x\":%.3f,\"y\":%.3f,\"z\":%.3f}", x, y, z);
+                    esp_mqtt_client_publish(mqtt_client, "banglejs2/accel", payload, 0, 1, 0);
+                    ESP_LOGI("banglejs2/accel", "%s", payload);
+                } else {
+                    ESP_LOGI(GATTC_TAG, "Falha na leitura ACCEL, formato inválido: %s", accel_str);
+                }
+            }
+            else {
+                ESP_LOGI(GATTC_TAG, "Linha ignorada (prefixo desconhecido): %s", line);
+            }
+
             line = strtok(NULL, "\n");
         }
         break;
