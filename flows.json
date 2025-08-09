@@ -1,674 +1,456 @@
 [
     {
-        "id": "c434f5df0c09a8e4",
+        "id": "9e0d025ca3066ef6",
         "type": "tab",
-        "label": "Fluxo 1",
+        "label": "Bangle Dashboard",
         "disabled": false,
-        "info": "",
-        "env": []
+        "info": ""
     },
     {
-        "id": "4c94f5f5f83d4d21",
+        "id": "8c8f335c8f077d3b",
         "type": "mqtt in",
-        "z": "c434f5df0c09a8e4",
-        "name": "Info Temperatura",
+        "z": "9e0d025ca3066ef6",
+        "name": "Temperatura",
         "topic": "banglejs2/data",
-        "qos": "2",
-        "datatype": "auto-detect",
         "broker": "mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
         "inputs": 0,
-        "x": 320,
-        "y": 120,
+        "x": 130,
+        "y": 80,
         "wires": [
             [
-                "93c648f5110dd0d9"
+                "33158955ab1e3378",
+                "a4d3868fa42536d7"
             ]
         ]
     },
     {
-        "id": "93c648f5110dd0d9",
+        "id": "33158955ab1e3378",
         "type": "function",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Extrai Temperatura",
-        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') {\n    jsonData = JSON.parse(jsonData);\n}\nmsg.payload = jsonData.temperature;\nreturn msg;",
+        "func": "var jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.temperature;\nreturn msg;",
         "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 120,
+        "x": 320,
+        "y": 80,
         "wires": [
             [
-                "919d8fe5f2a44241",
-                "1b60f71128ec3f07"
+                "c1a75d5c41fb2101"
             ]
         ]
     },
     {
-        "id": "919d8fe5f2a44241",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "60c8a2a1bc6d7bf2",
-        "order": 1,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Temperatura",
-        "label": "ºC",
-        "format": "{{value}}",
-        "min": 20,
-        "max": 40,
-        "colors": [
-            "#00b500",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "className": "",
-        "x": 800,
-        "y": 100,
-        "wires": []
-    },
-    {
-        "id": "1b60f71128ec3f07",
+        "id": "c1a75d5c41fb2101",
         "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Gráfico Temperatura",
-        "group": "60c8a2a1bc6d7bf2",
+        "group": "3e6846a8592124de",
         "order": 2,
         "width": 14,
         "height": 4,
-        "label": "Gráfico Temperatura",
+        "label": "Temperatura",
         "chartType": "line",
-        "legend": "false",
         "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
         "ymin": 20,
         "ymax": 40,
         "removeOlder": 1,
-        "removeOlderPoints": "",
         "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
         "colors": [
             "#1f77b4"
         ],
         "outputs": 1,
-        "useDifferentColor": false,
-        "className": "",
-        "x": 800,
-        "y": 160,
+        "x": 530,
+        "y": 80,
         "wires": [
             []
         ]
     },
     {
-        "id": "5a10d17c5e232865",
+        "id": "35121915292d032d",
         "type": "mqtt in",
-        "z": "c434f5df0c09a8e4",
-        "name": "Info Data/Hora",
+        "z": "9e0d025ca3066ef6",
+        "name": "Timestamp",
         "topic": "banglejs2/time",
-        "qos": "2",
-        "datatype": "auto-detect",
         "broker": "mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
         "inputs": 0,
-        "x": 320,
-        "y": 260,
+        "x": 130,
+        "y": 140,
         "wires": [
             [
-                "32930196b814ba97"
+                "95c62cc22cf13426",
+                "9713f0f55ad197ee"
             ]
         ]
     },
     {
-        "id": "32930196b814ba97",
+        "id": "95c62cc22cf13426",
         "type": "function",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Extrai Timestamp",
-        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.timestamp;\nreturn msg;",
+        "func": "var jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.timestamp;\nreturn msg;",
         "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 260,
+        "x": 320,
+        "y": 140,
         "wires": [
             [
-                "9b028b408639b7e2",
-                "f052832988e8127f"
+                "1c23474774bed6ef"
             ]
         ]
     },
     {
-        "id": "9b028b408639b7e2",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "60c8a2a1bc6d7bf2",
-        "order": 3,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Timestamp (s)",
-        "label": "segundos",
-        "format": "{{value}}",
-        "min": 0,
-        "max": "2000000000",
-        "colors": [
-            "#1f77b4",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "className": "",
-        "x": 800,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "f052832988e8127f",
+        "id": "1c23474774bed6ef",
         "type": "ui_text",
-        "z": "c434f5df0c09a8e4",
-        "group": "60c8a2a1bc6d7bf2",
-        "order": 4,
-        "width": 0,
-        "height": 0,
-        "name": "",
-        "label": "Timestamp & Data/Hora",
+        "z": "9e0d025ca3066ef6",
+        "group": "3e6846a8592124de",
+        "order": 3,
+        "label": "Data/Hora",
         "format": "{{payload}} | {{new Date(payload * 1000).toLocaleString('pt-BR')}}",
         "layout": "row-spread",
-        "x": 800,
-        "y": 280,
+        "x": 530,
+        "y": 140,
         "wires": []
     },
     {
-        "id": "bfae9b6abf7b3f15",
+        "id": "c45905470b408c53",
         "type": "mqtt in",
-        "z": "c434f5df0c09a8e4",
-        "name": "Info Frequência Cardíaca",
+        "z": "9e0d025ca3066ef6",
+        "name": "BPM",
         "topic": "banglejs2/hr",
-        "qos": "2",
-        "datatype": "auto-detect",
         "broker": "mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
         "inputs": 0,
-        "x": 320,
-        "y": 400,
+        "x": 130,
+        "y": 200,
         "wires": [
             [
-                "361d4c867efbf7f3"
+                "dfdaa174821f07b3",
+                "6bcb0871711dcf1e"
             ]
         ]
     },
     {
-        "id": "361d4c867efbf7f3",
+        "id": "dfdaa174821f07b3",
         "type": "function",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Extrai BPM",
-        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.bpm;\nreturn msg;",
+        "func": "var jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.bpm;\nreturn msg;",
         "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 400,
+        "x": 320,
+        "y": 200,
         "wires": [
             [
-                "120f053673a6627d",
-                "206674353339329b",
-                "2937714c1761077c"
+                "caeac5dcdff3e812"
             ]
         ]
     },
     {
-        "id": "120f053673a6627d",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "56252c1c7e922430",
-        "order": 1,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Frequência Cardíaca",
-        "label": "BPM",
-        "format": "{{value}}",
-        "min": 40,
-        "max": 150,
-        "colors": [
-            "#1f77b4",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "className": "",
-        "x": 800,
-        "y": 380,
-        "wires": []
-    },
-    {
-        "id": "2937714c1761077c",
-        "type": "ui_text",
-        "z": "c434f5df0c09a8e4",
-        "group": "56252c1c7e922430",
-        "order": 2,
-        "width": 0,
-        "height": 0,
-        "name": "",
-        "label": "Batimentos/min",
-        "format": "{{payload}} BPM",
-        "layout": "row-spread",
-        "x": 820,
-        "y": 420,
-        "wires": []
-    },
-    {
-        "id": "206674353339329b",
+        "id": "caeac5dcdff3e812",
         "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
-        "name": "Gráfico Frequência Cardíaca",
-        "group": "56252c1c7e922430",
-        "order": 3,
+        "z": "9e0d025ca3066ef6",
+        "name": "Gráfico BPM",
+        "group": "74ae6e68c66fda11",
+        "order": 1,
         "width": 14,
         "height": 4,
-        "label": "Gráfico Frequência Cardíaca",
+        "label": "Frequência Cardíaca",
         "chartType": "line",
-        "legend": "false",
         "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
         "ymin": 40,
         "ymax": 150,
         "removeOlder": 1,
-        "removeOlderPoints": "",
         "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
         "colors": [
             "#d62728"
         ],
         "outputs": 1,
-        "useDifferentColor": false,
-        "className": "",
-        "x": 820,
-        "y": 460,
+        "x": 530,
+        "y": 200,
         "wires": [
             []
         ]
     },
     {
-        "id": "5ef4075b39c64775",
+        "id": "cd8d32df2285a33f",
         "type": "mqtt in",
-        "z": "c434f5df0c09a8e4",
-        "name": "Info Passos",
+        "z": "9e0d025ca3066ef6",
+        "name": "Passos",
         "topic": "banglejs2/steps",
-        "qos": "2",
-        "datatype": "auto-detect",
         "broker": "mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
         "inputs": 0,
-        "x": 330,
-        "y": 540,
+        "x": 130,
+        "y": 260,
         "wires": [
             [
-                "ac33da6d4be4a23a"
+                "58e3166312f99952",
+                "4ee0463d4998c990"
             ]
         ]
     },
     {
-        "id": "ac33da6d4be4a23a",
+        "id": "58e3166312f99952",
         "type": "function",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Extrai Passos",
-        "func": "// Extrai JSON da mensagem\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.steps;\nreturn msg;",
+        "func": "var jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = jsonData.steps;\nreturn msg;",
         "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 540,
+        "x": 320,
+        "y": 260,
         "wires": [
             [
-                "465da1cc88cd4764",
-                "feb3a94c4880c258",
-                "4be51a11e854fde6"
+                "f2747e7e5e3e6693"
             ]
         ]
     },
     {
-        "id": "465da1cc88cd4764",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "name": "",
-        "group": "56252c1c7e922430",
-        "order": 4,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Contador de Passos",
-        "label": "passos",
-        "format": "{{value}}",
-        "min": 0,
-        "max": 100000,
-        "colors": [
-            "#00b500",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "className": "",
-        "x": 800,
-        "y": 520,
-        "wires": []
-    },
-    {
-        "id": "feb3a94c4880c258",
+        "id": "f2747e7e5e3e6693",
         "type": "ui_text",
-        "z": "c434f5df0c09a8e4",
-        "group": "56252c1c7e922430",
-        "order": 5,
-        "width": 0,
-        "height": 0,
-        "name": "",
+        "z": "9e0d025ca3066ef6",
+        "group": "74ae6e68c66fda11",
+        "order": 2,
         "label": "Total de Passos",
         "format": "{{payload}} passos",
         "layout": "row-spread",
-        "x": 820,
-        "y": 560,
+        "x": 530,
+        "y": 260,
         "wires": []
     },
     {
-        "id": "4be51a11e854fde6",
-        "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
-        "name": "Gráfico Passos",
-        "group": "56252c1c7e922430",
-        "order": 6,
-        "width": 14,
-        "height": 4,
-        "label": "Gráfico Passos",
-        "chartType": "line",
-        "legend": "false",
-        "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
-        "ymin": 0,
-        "ymax": 100000,
-        "removeOlder": 1,
-        "removeOlderPoints": "",
-        "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
-        "colors": [
-            "#9467bd"
-        ],
-        "outputs": 1,
-        "useDifferentColor": false,
-        "className": "",
-        "x": 800,
-        "y": 600,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "6b9d7ec5c66d5ffd",
+        "id": "e6f028704429d27e",
         "type": "mqtt in",
-        "z": "c434f5df0c09a8e4",
-        "name": "Info Acelerômetro",
+        "z": "9e0d025ca3066ef6",
+        "name": "Acelerômetro",
         "topic": "banglejs2/accel",
-        "qos": "2",
-        "datatype": "auto-detect",
         "broker": "mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
         "inputs": 0,
-        "x": 320,
-        "y": 700,
+        "x": 130,
+        "y": 320,
         "wires": [
             [
-                "13bae09378abaa75"
+                "cea210b34514c131",
+                "d8bc42374c58fc27"
             ]
         ]
     },
     {
-        "id": "13bae09378abaa75",
+        "id": "cea210b34514c131",
         "type": "function",
-        "z": "c434f5df0c09a8e4",
+        "z": "9e0d025ca3066ef6",
         "name": "Extrai Acelerômetro",
-        "func": "// Extrai JSON dos 3 eixos\nvar jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nreturn [\n    { payload: jsonData.x },\n    { payload: jsonData.y },\n    { payload: jsonData.z }\n];",
-        "outputs": 3,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 700,
+        "func": "var jsonData = msg.payload;\nif (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);\nmsg.payload = `X: ${jsonData.x} | Y: ${jsonData.y} | Z: ${jsonData.z}`;\nreturn msg;",
+        "outputs": 1,
+        "x": 320,
+        "y": 320,
         "wires": [
             [
-                "04a6b906cb3c3cce",
-                "c3ddd0b3c442b72c"
-            ],
-            [
-                "beadb1d7e0a23fef",
-                "908c3f0e01d7e907"
-            ],
-            [
-                "b5c0f7e28917a2bc",
-                "e1637c4f4e65d773"
+                "896c19637bfe36f5"
             ]
         ]
     },
     {
-        "id": "04a6b906cb3c3cce",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "9eda43a12a3fe433",
+        "id": "896c19637bfe36f5",
+        "type": "ui_text",
+        "z": "9e0d025ca3066ef6",
+        "group": "cb3f253a411cb5f6",
         "order": 1,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Acelerômetro X",
-        "label": "g",
-        "format": "{{value}}",
-        "min": -4,
-        "max": 4,
-        "colors": [
-            "#00b500",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "x": 780,
-        "y": 640,
+        "label": "Acelerômetro",
+        "format": "{{payload}}",
+        "layout": "row-spread",
+        "x": 530,
+        "y": 320,
         "wires": []
     },
     {
-        "id": "beadb1d7e0a23fef",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "9eda43a12a3fe433",
-        "order": 2,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Acelerômetro Y",
-        "label": "g",
-        "format": "{{value}}",
-        "min": -4,
-        "max": 4,
-        "colors": [
-            "#00b500",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "x": 780,
-        "y": 700,
-        "wires": []
-    },
-    {
-        "id": "b5c0f7e28917a2bc",
-        "type": "ui_gauge",
-        "z": "c434f5df0c09a8e4",
-        "group": "9eda43a12a3fe433",
-        "order": 3,
-        "width": 0,
-        "height": 0,
-        "gtype": "gage",
-        "title": "Acelerômetro Z",
-        "label": "g",
-        "format": "{{value}}",
-        "min": -4,
-        "max": 4,
-        "colors": [
-            "#00b500",
-            "#e6e600",
-            "#ca3838"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "x": 780,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "c3ddd0b3c442b72c",
-        "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
-        "name": "Gráfico X",
-        "group": "9eda43a12a3fe433",
-        "order": 4,
-        "width": 8,
-        "height": 2,
-        "label": "Gráfico X",
-        "chartType": "line",
-        "legend": "false",
-        "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
-        "ymin": -4,
-        "ymax": 4,
-        "removeOlder": 1,
-        "removeOlderPoints": "",
-        "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
-        "colors": [
-            "#6666cc"
-        ],
+        "id": "29ab322eb60670f5",
+        "type": "function",
+        "z": "9e0d025ca3066ef6",
+        "name": "Combina leitura",
+        "func": "// Junta os dados dos sensores em objeto único e acumula em array\nlet item = flow.get('dado_parcial') || {};\nlet tipo = msg.topic;\nlet dados = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\nif (tipo === 'banglejs2/time') item.timestamp = dados.timestamp;\nif (tipo === 'banglejs2/data') item.temperature = dados.temperature;\nif (tipo === 'banglejs2/hr') item.bpm = dados.bpm;\nif (tipo === 'banglejs2/steps') item.steps = dados.steps;\nif (tipo === 'banglejs2/accel') { item.x = dados.x; item.y = dados.y; item.z = dados.z; }\n// Após receber todos, envia o registro completo para acumular\nif (item.timestamp && item.temperature && item.bpm && item.steps && item.x) {\n  flow.set('dado_parcial', {});\n  msg.payload = item;\n  return [msg];\n}\nflow.set('dado_parcial', item);\nreturn [null];",
         "outputs": 1,
-        "useDifferentColor": false,
-        "x": 990,
-        "y": 640,
+        "x": 700,
+        "y": 400,
         "wires": [
-            []
+            [
+                "a58121a7413b7a4f"
+            ]
         ]
     },
     {
-        "id": "908c3f0e01d7e907",
-        "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
-        "name": "Gráfico Y",
-        "group": "9eda43a12a3fe433",
+        "id": "a58121a7413b7a4f",
+        "type": "function",
+        "z": "9e0d025ca3066ef6",
+        "name": "Acumula Dados CSV",
+        "func": "// Acumula o registro em array do flow context\nconst campos = ['timestamp', 'temperature', 'bpm', 'steps', 'x', 'y', 'z'];\nconst registro = msg.payload;\nlet lista = flow.get('dados_csv') || [];\nif (campos.every(k => registro.hasOwnProperty(k))) {\n  lista.push(registro);\n  flow.set('dados_csv', lista);\n}\nreturn null;",
+        "outputs": 0,
+        "x": 950,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "63bf57fa49199bb6",
+        "type": "ui_button",
+        "z": "9e0d025ca3066ef6",
+        "name": "Exportar CSV",
+        "group": "3e6846a8592124de",
         "order": 5,
-        "width": 8,
-        "height": 2,
-        "label": "Gráfico Y",
-        "chartType": "line",
-        "legend": "false",
-        "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
-        "ymin": -4,
-        "ymax": 4,
-        "removeOlder": 1,
-        "removeOlderPoints": "",
-        "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
-        "colors": [
-            "#66cc66"
-        ],
+        "width": "3",
+        "height": "1",
+        "label": "Exportar CSV",
+        "color": "white",
+        "bgcolor": "#17a2b8",
+        "icon": "file_download",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "x": 400,
+        "y": 500,
+        "wires": [
+            [
+                "e752a716d37b70db"
+            ]
+        ]
+    },
+    {
+        "id": "e752a716d37b70db",
+        "type": "function",
+        "z": "9e0d025ca3066ef6",
+        "name": "Montar CSV",
+        "func": "// Monta payload para node CSV\nmsg.payload = flow.get('dados_csv') || [];\nreturn msg;",
         "outputs": 1,
-        "useDifferentColor": false,
-        "x": 990,
-        "y": 700,
+        "x": 600,
+        "y": 500,
+        "wires": [
+            [
+                "dee78b045c040b41"
+            ]
+        ]
+    },
+    {
+        "id": "dee78b045c040b41",
+        "type": "csv",
+        "z": "9e0d025ca3066ef6",
+        "name": "Formatar CSV",
+        "sep": ",",
+        "hdrout": true,
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "timestamp,temperature,bpm,steps,x,y,z",
+        "x": 800,
+        "y": 500,
+        "wires": [
+            [
+                "84460fddc0941783"
+            ]
+        ]
+    },
+    {
+        "id": "84460fddc0941783",
+        "type": "file",
+        "z": "9e0d025ca3066ef6",
+        "name": "Salvar CSV",
+        "filename": "C:/Users/raph2/node-red-static/dados_bangle.csv",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 1000,
+        "y": 500,
+        "wires": [
+            [
+                "6a95713aeece5c1d"
+            ]
+        ]
+    },
+    {
+        "id": "6a95713aeece5c1d",
+        "type": "ui_template",
+        "z": "9e0d025ca3066ef6",
+        "group": "3e6846a8592124de",
+        "name": "Download CSV",
+        "order": 6,
+        "width": 6,
+        "height": 1,
+        "x": 1190,
+        "y": 500,
         "wires": [
             []
         ]
     },
     {
-        "id": "e1637c4f4e65d773",
-        "type": "ui_chart",
-        "z": "c434f5df0c09a8e4",
-        "name": "Gráfico Z",
-        "group": "9eda43a12a3fe433",
-        "order": 6,
-        "width": 8,
-        "height": 2,
-        "label": "Gráfico Z",
-        "chartType": "line",
-        "legend": "false",
-        "xformat": "HH:mm:ss",
-        "interpolate": "linear",
-        "nodata": "",
-        "dot": false,
-        "ymin": -4,
-        "ymax": 4,
-        "removeOlder": 1,
-        "removeOlderPoints": "",
-        "removeOlderUnit": "3600",
-        "cutout": 0,
-        "useOneColor": false,
-        "useUTC": false,
-        "colors": [
-            "#cc6666"
+        "id": "9713f0f55ad197ee",
+        "type": "link out",
+        "z": "9e0d025ca3066ef6",
+        "name": "To CombinaDados (time)",
+        "links": [
+            "2fb237b55c76cde5"
         ],
-        "outputs": 1,
-        "useDifferentColor": false,
-        "x": 990,
-        "y": 760,
+        "x": 470,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "a4d3868fa42536d7",
+        "type": "link out",
+        "z": "9e0d025ca3066ef6",
+        "name": "To CombinaDados (temp)",
+        "links": [
+            "2fb237b55c76cde5"
+        ],
+        "x": 470,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "6bcb0871711dcf1e",
+        "type": "link out",
+        "z": "9e0d025ca3066ef6",
+        "name": "To CombinaDados (bpm)",
+        "links": [
+            "2fb237b55c76cde5"
+        ],
+        "x": 470,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "4ee0463d4998c990",
+        "type": "link out",
+        "z": "9e0d025ca3066ef6",
+        "name": "To CombinaDados (steps)",
+        "links": [
+            "2fb237b55c76cde5"
+        ],
+        "x": 470,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "d8bc42374c58fc27",
+        "type": "link out",
+        "z": "9e0d025ca3066ef6",
+        "name": "To CombinaDados (accel)",
+        "links": [
+            "2fb237b55c76cde5"
+        ],
+        "x": 470,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "2fb237b55c76cde5",
+        "type": "link in",
+        "z": "9e0d025ca3066ef6",
+        "name": "De sensores para CombinaDados",
+        "links": [
+            "9713f0f55ad197ee",
+            "a4d3868fa42536d7",
+            "6bcb0871711dcf1e",
+            "4ee0463d4998c990",
+            "d8bc42374c58fc27"
+        ],
+        "x": 600,
+        "y": 400,
         "wires": [
-            []
+            [
+                "29ab322eb60670f5"
+            ]
         ]
     },
     {
@@ -699,45 +481,36 @@
         "sessionExpiry": ""
     },
     {
-        "id": "60c8a2a1bc6d7bf2",
+        "id": "3e6846a8592124de",
         "type": "ui_group",
         "name": "Sensor Temperatura",
-        "tab": "1be86dd588ff48e2",
-        "order": 2,
-        "disp": true,
-        "width": 14,
-        "collapse": false,
-        "className": ""
-    },
-    {
-        "id": "56252c1c7e922430",
-        "type": "ui_group",
-        "name": "Sensor Umidade",
-        "tab": "1be86dd588ff48e2",
+        "tab": "ab66081d8896b578",
         "order": 1,
-        "disp": true,
-        "width": "6",
-        "collapse": false,
-        "className": ""
+        "width": 14,
+        "collapse": false
     },
     {
-        "id": "9eda43a12a3fe433",
+        "id": "74ae6e68c66fda11",
+        "type": "ui_group",
+        "name": "Sensor Frequência Cardíaca",
+        "tab": "ab66081d8896b578",
+        "order": 2,
+        "width": 14,
+        "collapse": false
+    },
+    {
+        "id": "cb3f253a411cb5f6",
         "type": "ui_group",
         "name": "Acelerômetro",
-        "tab": "1be86dd588ff48e2",
+        "tab": "ab66081d8896b578",
         "order": 3,
-        "disp": true,
-        "width": "14",
-        "collapse": false,
-        "className": ""
+        "width": 14,
+        "collapse": false
     },
     {
-        "id": "1be86dd588ff48e2",
+        "id": "ab66081d8896b578",
         "type": "ui_tab",
         "name": "Wireless Communication Protocols for IoT Applications",
-        "icon": "dashboard",
-        "order": 1,
-        "disabled": false,
-        "hidden": false
+        "order": 1
     }
 ]
